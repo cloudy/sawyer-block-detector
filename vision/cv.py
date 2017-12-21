@@ -14,8 +14,8 @@ import numpy as np
 from collections import deque
 
 # Color values in HSV
-GREENLOWER = np.array([77,80,40])
-GREENUPPER = np.array([102,255,255])
+GREENLOWER = np.array([77, 80, 40])
+GREENUPPER = np.array([102, 255, 255])
 
 BLUELOWER = np.array([110, 80, 40])
 BLUEUPPER = np.array([130, 255, 255])
@@ -39,19 +39,26 @@ class Block:
         self.trackpoints = deque(maxlen=MAXQUEUE)
         self.idnum = idnum
     
-    def addPoint(self, x, y):
+    def addPoint(self, x, y, w, h):
         if math.isnan(x) or math.isnan(y):
             print("Invalid coordinate format!")
             return
+        (x, y) = self.getCenter(x, y, w, h)
+
         # This should be pushed with rosbag
-        self.points.append((x,y))
+        self.points.append((x, y))
         self.x = x
         self.y = y
-        self.trackpoints.appendleft((x,y))
+        self.trackpoints.appendleft((x, y))
 
     # Compute distance between self and a given point
-    def euclideanDistance(self, x, y):
+    def euclideanDistance(self, x, y, w, h):
+        (x, y) = self.getCenter(x,y,w,h)
         return math.sqrt((x - self.x)**2 + (y - self.y)**2)
+    
+    # Centroid calculation
+    def getCenter(self, x, y, w, h):
+        return (((int)(x + 0.5*w)), ((int)(y + 0.5*h)))
 
 # Pull images from ROS node and process them
 class BridgeImage:
@@ -107,7 +114,7 @@ class BridgeImage:
     
         _, conts, h = cv2.findContours(mask_final.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     
-        cv2.drawContours(im, conts, -1, (255,255,0), 1)
+        cv2.drawContours(im, conts, -1, (255, 255, 0), 1)
         
         for i in range(len(conts)):
             x,y,w,h = cv2.boundingRect(conts[i])
@@ -116,7 +123,6 @@ class BridgeImage:
             # with coordinates, which causes issues when all blocks are back in view
             # two blocks sharing IDs
             if True: #len(conts) == len(self.blocks): # Hack to prevent append when occluded
-                xc, yc = self.getCenter(x,y,w,h)
                 
                 # If initializing point values we don't want to compute distances 
                 if self.initframe:
@@ -124,13 +130,13 @@ class BridgeImage:
                         self.initframe = False
 
                     print("Init block with first points")
-                    self.blocks[i].addPoint(xc, yc)
+                    self.blocks[i].addPoint(x, y, w, h)
 
                 else:
                     # Get block index w/ shortest euclidean distance from contour center
-                    index = np.argmin([block.euclideanDistance(xc, yc) for block in self.blocks])
+                    index = np.argmin([block.euclideanDistance(x, y, w, h) for block in self.blocks])
                     
-                    self.blocks[index].addPoint(xc, yc)
+                    self.blocks[index].addPoint(x, y, w, h)
                     
                     # Display history from point queue
                     pts = self.blocks[index].trackpoints
@@ -144,8 +150,8 @@ class BridgeImage:
                         thickness = int(np.sqrt(MAXQUEUE / float(j + 1))*1.5)
                         cv2.line(im, pts[j - 1], pts[j], (0, 0, 255), thickness)
                     
-                    cv2.rectangle(im, (x,y), (x+w, y+h), (0,0,255), 1)
-                    cv2.putText(im, str(index + 1), (x, y+h), FONTFACE, FONTSCALE, FONTCOLOR)
+                    cv2.rectangle(im, (x, y), (x + w, y + h), (0,0,255), 1)
+                    cv2.putText(im, str(index + 1), (x, y + h), FONTFACE, FONTSCALE, FONTCOLOR)
             
             # For diagnostics
             print(x, y, w, h)
@@ -157,9 +163,6 @@ class BridgeImage:
         cv2.imshow("Image", im)
         cv2.waitKey(10)
 
-    # Centroid calculation
-    def getCenter(self, x, y, w, h):
-        return (((int)(x+0.5*w)), ((int)(y+0.5*h)))
 
 
 
