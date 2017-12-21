@@ -53,12 +53,25 @@ class Block:
 
     # Compute distance between self and a given point
     def euclideanDistance(self, x, y, w, h):
-        (x, y) = self.getCenter(x,y,w,h)
+        (x, y) = self.getCenter(x, y, w, h)
         return math.sqrt((x - self.x)**2 + (y - self.y)**2)
     
     # Centroid calculation
     def getCenter(self, x, y, w, h):
         return (((int)(x + 0.5*w)), ((int)(y + 0.5*h)))
+
+    # Make sure there is not a huge jump in pixel value, this is to prevent id remapping
+    def isDeltaRange(self, x, y, w, h):
+        pos_point = self.getCenter(x, y, w, h)
+        
+        # Check if there are enough points to see slope
+        if len(self.points) > 2:
+            delta = np.subtract(self.points[-1], self.points[-2] #tuple(map(sum, zip(self.points[-1], self.points[-2])))
+            if tuple(5*np.array(delta)) <  pos_point:
+                return False
+
+        return True
+
 
 # Pull images from ROS node and process them
 class BridgeImage:
@@ -117,7 +130,7 @@ class BridgeImage:
         cv2.drawContours(im, conts, -1, (255, 255, 0), 1)
         
         for i in range(len(conts)):
-            x,y,w,h = cv2.boundingRect(conts[i])
+            x, y, w, h = cv2.boundingRect(conts[i])
             
             # BUG: if block is occluded, the next closest (incorrect) block will be appended
             # with coordinates, which causes issues when all blocks are back in view
@@ -129,30 +142,39 @@ class BridgeImage:
                     if i == len(conts) - 1:
                         self.initframe = False
 
-                    print("Init block with first points")
+                    print("Init block with first point")
                     self.blocks[i].addPoint(x, y, w, h)
 
                 else:
                     # Get block index w/ shortest euclidean distance from contour center
                     index = np.argmin([block.euclideanDistance(x, y, w, h) for block in self.blocks])
                     
-                    self.blocks[index].addPoint(x, y, w, h)
-                    
-                    # Display history from point queue
-                    pts = self.blocks[index].trackpoints
-
-                    for j in xrange(1, len(pts)):
-
-                        if pts[j - 1] is None or pts[j] is None:
-                            continue
+                    # Make sure that we aren't incorrectly labeling a block
+                    ok = self.blocks[index].isDeltaRange(x, y, w, h)
                         
-                        # Trailing points should decrease thickness
-                        thickness = int(np.sqrt(MAXQUEUE / float(j + 1))*1.5)
-                        cv2.line(im, pts[j - 1], pts[j], (0, 0, 255), thickness)
-                    
-                    cv2.rectangle(im, (x, y), (x + w, y + h), (0,0,255), 1)
-                    cv2.putText(im, str(index + 1), (x, y + h), FONTFACE, FONTSCALE, FONTCOLOR)
+                    if ok:
+
+                        self.blocks[index].addPoint(x, y, w, h)
+                        
+                        # Display history from point queue
+                        pts = self.blocks[index].trackpoints
+    
+                        for j in xrange(1, len(pts)):
+    
+                            if pts[j - 1] is None or pts[j] is None:
+                                continue
+                            
+                            # Trailing points should decrease thickness
+                            thickness = int(np.sqrt(MAXQUEUE / float(j + 1))*1.5)
+                            cv2.line(im, pts[j - 1], pts[j], (0, 0, 255), thickness)
+                        
+                        cv2.rectangle(im, (x, y), (x + w, y + h), (0,0,255), 1)
+                        cv2.putText(im, str(index + 1), (x, y + h), FONTFACE, FONTSCALE, FONTCOLOR)
             
+                    else:
+                        # do something clever with info
+                        continue
+
             # For diagnostics
             print(x, y, w, h)
             
