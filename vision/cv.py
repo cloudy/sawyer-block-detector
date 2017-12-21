@@ -14,11 +14,22 @@ import numpy as np
 from collections import deque
 
 # Color values in HSV
-GREENLOWER = np.array([77, 80, 40])
-GREENUPPER = np.array([102, 255, 255])
+#GREENLOWER = np.array([77, 80, 40])
+#GREENUPPER = np.array([90, 255, 255])
+#
+#BLUELOWER = np.array([110, 80, 40])
+#BLUEUPPER = np.array([130, 255, 255])
 
-BLUELOWER = np.array([110, 80, 40])
-BLUEUPPER = np.array([130, 255, 255])
+GREENLOWER = np.array([80, 60, 60])
+GREENUPPER = np.array([100 ,255, 255])
+
+BLUELOWER = np.array([105, 100, 100])
+BLUEUPPER = np.array([120, 255, 255])
+#GREENLOWER = np.array([95, 80, 40])
+#GREENUPPER = np.array([140, 255, 255])
+#
+#BLUELOWER = np.array([210, 80, 40])
+#BLUEUPPER = np.array([250, 255, 255])
 
 # Determines noise clear for morph
 KERNELOPEN = np.ones((5,5))
@@ -63,11 +74,13 @@ class Block:
     # Make sure there is not a huge jump in pixel value, this is to prevent id remapping
     def isDeltaRange(self, x, y, w, h):
         pos_point = self.getCenter(x, y, w, h)
-        
+        pos_delta = tuple(np.subtract(pos_point, self.points[-1])) 
         # Check if there are enough points to see slope
         if len(self.points) > 2:
-            delta = np.subtract(self.points[-1], self.points[-2] #tuple(map(sum, zip(self.points[-1], self.points[-2])))
-            if tuple(5*np.array(delta)) <  pos_point:
+            delta = tuple(np.subtract(self.points[-1], self.points[-2]))
+            print(delta, pos_point, pos_delta)
+            if tuple(5*(np.array(delta) + (0.2, 0.2))) <  pos_delta:
+                print("Too big a step!")
                 return False
 
         return True
