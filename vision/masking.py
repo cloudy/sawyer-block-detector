@@ -19,12 +19,6 @@ GREENUPPER = np.array([100 ,255, 255])
 BLUELOWER = np.array([105, 100, 100])
 BLUEUPPER = np.array([120, 255, 255])
 
-#GREENLOWER = np.array([95, 80, 40])
-#GREENUPPER = np.array([140, 255, 255])
-#
-#BLUELOWER = np.array([210, 80, 40])
-#BLUEUPPER = np.array([250, 255, 255])
-
 # Determines noise clear for morph
 KERNELOPEN = np.ones((5,5))
 KERNELCLOSE = np.ones((5,5))
