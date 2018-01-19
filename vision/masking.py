@@ -48,8 +48,8 @@ class BridgeImage:
         
         self.block_detector(cv_im)
 
-        #cv2.imshow("processed_image", cv_im)
-        #cv2.waitKey(3)
+        cv2.imshow("processed_image", cv_im)
+        cv2.waitKey(3)
 
         try:
             self.im_pub.publish(self.bridge.cv2_to_imgmsg(cv_im, "bgr8"))
